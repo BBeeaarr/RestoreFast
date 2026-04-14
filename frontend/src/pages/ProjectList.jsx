@@ -12,6 +12,11 @@ export default function ProjectList() {
     address: '',
     status: 'active'
   });
+  
+  // Filter states
+  const [filterName, setFilterName] = useState('');
+  const [filterAddress, setFilterAddress] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
     loadProjects();
@@ -48,6 +53,26 @@ export default function ProjectList() {
       [e.target.name]: e.target.value
     });
   };
+
+  // Apply filters
+  const filteredProjects = projects.filter(project => {
+    // Name filter (case-insensitive search)
+    if (filterName && !project.name.toLowerCase().includes(filterName.toLowerCase())) {
+      return false;
+    }
+    // Address filter (case-insensitive search)
+    if (filterAddress && !project.address.toLowerCase().includes(filterAddress.toLowerCase())) {
+      return false;
+    }
+    // Status filter
+    if (filterStatus !== 'all' && project.status !== filterStatus) {
+      return false;
+    }
+    return true;
+  });
+
+  const totalProjects = projects.length;
+  const filteredCount = filteredProjects.length;
 
   if (loading) return <div className="container">Loading...</div>;
   if (error) return <div className="container">Error: {error}</div>;
@@ -115,17 +140,97 @@ export default function ProjectList() {
         </div>
       )}
 
+      {/* Filters */}
+      {projects.length > 0 && (
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ marginBottom: '1rem' }}>Filters</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+            {/* Name Search */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '0.25rem', fontWeight: '500' }}>
+                Search by Name
+              </label>
+              <input
+                type="text"
+                value={filterName}
+                onChange={(e) => setFilterName(e.target.value)}
+                placeholder="Type to search..."
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Address Search */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '0.25rem', fontWeight: '500' }}>
+                Search by Address
+              </label>
+              <input
+                type="text"
+                value={filterAddress}
+                onChange={(e) => setFilterAddress(e.target.value)}
+                placeholder="Type to search..."
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '0.25rem', fontWeight: '500' }}>
+                Status
+              </label>
+              <select 
+                value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+            <div style={{ color: '#666', fontSize: '0.9em' }}>
+              Showing {filteredCount} of {totalProjects} projects
+            </div>
+            <button
+              onClick={() => {
+                setFilterName('');
+                setFilterAddress('');
+                setFilterStatus('all');
+              }}
+              style={{ padding: '0.5em 1em', background: '#666', fontSize: '0.9em' }}
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      )}
+
       {projects.length === 0 ? (
         <div className="card">
           <p style={{ textAlign: 'center', color: '#666' }}>
             No projects yet. Create one to get started!
           </p>
         </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="card">
+          <p style={{ textAlign: 'center', color: '#666' }}>
+            No projects match the current filters.
+          </p>
+        </div>
       ) : (
-        <div>
-          {projects.map(project => (
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+          gap: '1rem'
+        }}>
+          {filteredProjects.map(project => (
             <div key={project.id} className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                   <h3 style={{ marginBottom: '0.5rem' }}>
                     <Link 
@@ -135,13 +240,15 @@ export default function ProjectList() {
                       {project.name}
                     </Link>
                   </h3>
-                  <p style={{ color: '#666', marginBottom: '0.5rem' }}>{project.address}</p>
+                  <p style={{ color: '#666', marginBottom: '0.5rem', fontSize: '0.95em' }}>
+                    📍 {project.address}
+                  </p>
                   <span className={`badge badge-${project.status}`}>
                     {project.status}
                   </span>
                 </div>
-                <Link to={`/projects/${project.id}`}>
-                  <button>Dashboard</button>
+                <Link to={`/projects/${project.id}`} style={{ marginTop: 'auto' }}>
+                  <button style={{ width: '100%' }}>View Project</button>
                 </Link>
               </div>
             </div>
