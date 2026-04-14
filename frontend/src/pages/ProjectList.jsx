@@ -140,7 +140,7 @@ export default function ProjectList() {
                     {project.status}
                   </span>
                 </div>
-                <Link to={`/projects/${project.id}/dashboard`}>
+                <Link to={`/projects/${project.id}`}>
                   <button>Dashboard</button>
                 </Link>
               </div>
