@@ -12,6 +12,14 @@ export default function ProjectDetail() {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   
+  // Edit project states
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [editProjectData, setEditProjectData] = useState({
+    name: '',
+    address: '',
+    status: 'active'
+  });
+  
   // Filter states
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
@@ -32,6 +40,11 @@ export default function ProjectDetail() {
       const data = await projectsApi.getById(id);
       setProject(data);
       setItems(data.items || []);
+      setEditProjectData({
+        name: data.name,
+        address: data.address,
+        status: data.status
+      });
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -78,6 +91,44 @@ export default function ProjectDetail() {
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingItem(null);
+  };
+
+  const handleEditProject = () => {
+    setIsEditingProject(true);
+  };
+
+  const handleCancelEditProject = () => {
+    setIsEditingProject(false);
+    if (project) {
+      setEditProjectData({
+        name: project.name,
+        address: project.address,
+        status: project.status
+      });
+    }
+  };
+
+  const handleSubmitEditProject = async () => {
+    if (!editProjectData.name || !editProjectData.address) {
+      setError('Name and address are required');
+      return;
+    }
+
+    try {
+      const updated = await projectsApi.update(id, editProjectData);
+      setProject(updated);
+      setIsEditingProject(false);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleEditProjectChange = (e) => {
+    setEditProjectData({
+      ...editProjectData,
+      [e.target.name]: e.target.value
+    });
   };
 
   // Get unique values for filters
@@ -139,10 +190,75 @@ export default function ProjectDetail() {
             {project.status}
           </span>
         </div>
-        <button onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancel' : 'Add Punch Item'}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button onClick={handleEditProject}>
+            Edit Project
+          </button>
+          <button onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Cancel' : 'Add Punch Item'}
+          </button>
+        </div>
       </div>
+
+      {/* Edit Project Form */}
+      {isEditingProject && (
+        <div className="card" style={{ marginBottom: '2rem' }}>
+          <h3 style={{ marginBottom: '1rem' }}>Edit Project</h3>
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmitEditProject(); }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Project Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={editProjectData.name}
+                  onChange={handleEditProjectChange}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Address
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={editProjectData.address}
+                  onChange={handleEditProjectChange}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={editProjectData.status}
+                  onChange={handleEditProjectChange}
+                  style={{ width: '100%' }}
+                >
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button type="submit">Save Changes</button>
+                <button
+                  type="button"
+                  onClick={handleCancelEditProject}
+                  style={{ background: '#666' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
 
       {showForm && (
         <div className="card" style={{ marginBottom: '2rem' }}>

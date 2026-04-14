@@ -43,6 +43,35 @@ def get_project(project_id):
     
     return jsonify(project_data), 200
 
+@projects_bp.route('/projects/<project_id>', methods=['PATCH'])
+def update_project(project_id):
+    """Update a project (name, address, status)"""
+    project = Project.query.get(project_id)
+    
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 422
+    
+    # Update allowed fields
+    if 'name' in data and data['name']:
+        project.name = data['name']
+    
+    if 'address' in data and data['address']:
+        project.address = data['address']
+    
+    if 'status' in data:
+        valid_statuses = ['active', 'completed', 'archived']
+        if data['status'] not in valid_statuses:
+            return jsonify({'error': f'Status must be one of: {", ".join(valid_statuses)}'}), 422
+        project.status = data['status']
+    
+    db.session.commit()
+    
+    return jsonify(project.to_dict()), 200
+
 @projects_bp.route('/projects/<project_id>/dashboard', methods=['GET'])
 def get_project_dashboard(project_id):
     """Get dashboard stats for a project"""

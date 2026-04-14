@@ -37,6 +37,15 @@ export const projectsApi = {
   getDashboard: async (id) => {
     const response = await fetch(`${API_BASE}/projects/${id}/dashboard`);
     return handleResponse(response);
+  },
+  
+  update: async (id, data) => {
+    const response = await fetch(`${API_BASE}/projects/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return handleResponse(response);
   }
 };
 
