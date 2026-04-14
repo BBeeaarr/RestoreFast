@@ -7,6 +7,7 @@ export default function ProjectList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -38,12 +39,15 @@ export default function ProjectList() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setIsSubmitting(true);
       await projectsApi.create(formData);
       setFormData({ name: '', address: '', status: 'active' });
       setShowForm(false);
       loadProjects();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -81,7 +85,7 @@ export default function ProjectList() {
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2>Projects</h2>
-        <button onClick={() => setShowForm(!showForm)}>
+        <button onClick={() => setShowForm(!showForm)} disabled={isSubmitting}>
           {showForm ? 'Cancel' : 'New Project'}
         </button>
       </div>
@@ -134,7 +138,9 @@ export default function ProjectList() {
                   <option value="archived">Archived</option>
                 </select>
               </div>
-              <button type="submit">Create Project</button>
+              <button type="submit" disabled={isSubmitting} style={{ opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                {isSubmitting ? '⏳ Creating...' : 'Create Project'}
+              </button>
             </div>
           </form>
         </div>

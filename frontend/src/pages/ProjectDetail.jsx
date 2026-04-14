@@ -11,9 +11,11 @@ export default function ProjectDetail() {
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [isSubmittingItem, setIsSubmittingItem] = useState(false);
   
   // Edit project states
   const [isEditingProject, setIsEditingProject] = useState(false);
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
   const [editProjectData, setEditProjectData] = useState({
     name: '',
     address: '',
@@ -55,11 +57,15 @@ export default function ProjectDetail() {
 
   const handleCreateItem = async (formData) => {
     try {
+      setIsSubmittingItem(true);
       await itemsApi.create({ ...formData, projectId: id });
       setShowForm(false);
+      setEditingItem(null);
       loadProject();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsSubmittingItem(false);
     }
   };
 
@@ -115,12 +121,15 @@ export default function ProjectDetail() {
     }
 
     try {
+      setIsSubmittingProject(true);
       const updated = await projectsApi.update(id, editProjectData);
       setProject(updated);
       setIsEditingProject(false);
       setError(null);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsSubmittingProject(false);
     }
   };
 
@@ -191,10 +200,10 @@ export default function ProjectDetail() {
           </span>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button onClick={handleEditProject}>
+          <button onClick={handleEditProject} disabled={isSubmittingItem}>
             Edit Project
           </button>
-          <button onClick={() => setShowForm(!showForm)}>
+          <button onClick={() => setShowForm(!showForm)} disabled={isSubmittingItem}>
             {showForm ? 'Cancel' : 'Add Punch Item'}
           </button>
         </div>
@@ -246,11 +255,14 @@ export default function ProjectDetail() {
                 </select>
               </div>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button type="submit">Save Changes</button>
+                <button type="submit" disabled={isSubmittingProject} style={{ opacity: isSubmittingProject ? 0.6 : 1, cursor: isSubmittingProject ? 'not-allowed' : 'pointer' }}>
+                  {isSubmittingProject ? '⏳ Saving...' : 'Save Changes'}
+                </button>
                 <button
                   type="button"
                   onClick={handleCancelEditProject}
-                  style={{ background: '#666' }}
+                  disabled={isSubmittingProject}
+                  style={{ background: '#666', opacity: isSubmittingProject ? 0.6 : 1, cursor: isSubmittingProject ? 'not-allowed' : 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -266,6 +278,7 @@ export default function ProjectDetail() {
             item={editingItem}
             onSubmit={handleCreateItem}
             onCancel={handleCancelForm}
+            isLoading={isSubmittingItem}
           />
         </div>
       )}

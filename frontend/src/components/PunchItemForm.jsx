@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function PunchItemForm({ item, onSubmit, onCancel }) {
+export default function PunchItemForm({ item, onSubmit, onCancel, isLoading = false }) {
   const [formData, setFormData] = useState({
     location: item?.location || '',
     description: item?.description || '',
@@ -119,14 +119,15 @@ export default function PunchItemForm({ item, onSubmit, onCancel }) {
         </div>
 
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button type="submit">
-            {item ? 'Update' : 'Create'} Punch Item
+          <button type="submit" disabled={isLoading} style={{ opacity: isLoading ? 0.6 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+            {isLoading ? '⏳ Saving...' : (item ? 'Update' : 'Create') + ' Punch Item'}
           </button>
           {onCancel && (
             <button 
               type="button" 
               onClick={onCancel}
-              style={{ background: '#666' }}
+              disabled={isLoading}
+              style={{ background: '#666', opacity: isLoading ? 0.6 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
             >
               Cancel
             </button>
