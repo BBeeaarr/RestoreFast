@@ -307,7 +307,17 @@ function DashboardItemCard({ item }) {
         <div style={{ fontSize: '0.75em', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
           Description
         </div>
-        <div style={{ color: '#555', fontSize: '0.95em', lineHeight: '1.4' }}>
+        <div style={{
+          color: '#555',
+          fontSize: '0.95em',
+          lineHeight: '1.4',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical',
+          wordBreak: 'break-word'
+        }}>
           {item.description}
         </div>
       </div>

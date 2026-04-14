@@ -14,7 +14,16 @@ export default function PunchItemCard({ item, onStatusChange, onDelete, onEdit }
             </span>
           </div>
           
-          <p style={{ color: '#444', marginBottom: '1rem' }}>
+          <p style={{
+            color: '#444',
+            marginBottom: '1rem',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            wordBreak: 'break-word'
+          }}>
             {item.description}
           </p>
 
