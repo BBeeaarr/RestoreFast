@@ -78,7 +78,7 @@ export default function ProjectList() {
   const totalProjects = projects.length;
   const filteredCount = filteredProjects.length;
 
-  if (loading) return <div className="container">Loading...</div>;
+  if (loading) return <ProjectListSkeleton />;
   if (error) return <div className="container">Error: {error}</div>;
 
   return (
@@ -261,6 +261,57 @@ export default function ProjectList() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ProjectListSkeleton() {
+  return (
+    <div className="container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div className="skeleton" style={{ width: '120px', height: '32px' }}></div>
+        <div className="skeleton" style={{ width: '130px', height: '44px', borderRadius: '8px' }}></div>
+      </div>
+
+      {/* Create Form Skeleton (optional) */}
+      <div className="card" style={{ marginBottom: '2rem' }}>
+        <div className="skeleton" style={{ width: '100px', height: '24px', marginBottom: '1rem' }}></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <div className="skeleton" style={{ width: '120px', height: '14px', marginBottom: '0.5rem' }}></div>
+            <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '4px' }}></div>
+          </div>
+          <div>
+            <div className="skeleton" style={{ width: '100px', height: '14px', marginBottom: '0.5rem' }}></div>
+            <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '4px' }}></div>
+          </div>
+          <div>
+            <div className="skeleton" style={{ width: '80px', height: '14px', marginBottom: '0.5rem' }}></div>
+            <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '4px' }}></div>
+          </div>
+          <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px' }}></div>
+        </div>
+      </div>
+
+      {/* Projects Grid Skeleton */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+        gap: '1rem'
+      }}>
+        {[1, 2, 3, 4, 5, 6].map(i => (
+          <div key={i} className="card">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <div className="skeleton" style={{ width: '70%', height: '24px', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '90%', height: '16px', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '80px', height: '24px', borderRadius: '4px' }}></div>
+              </div>
+              <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px', marginTop: 'auto' }}></div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
