@@ -11,10 +11,17 @@ A full-stack web application for managing construction project punch lists, trac
 ## Features
 
 - ✅ Create and manage multiple construction projects
-- ✅ Add punch items with location, description, priority, photos, and assignees
+- ✅ Edit project details (name, address, status)
+- ✅ Add punch items with location, description, priority, assignee
+- ✅ Multi-photo gallery support with thumbnail selection
+- ✅ Fullscreen photo viewer with navigation
+- ✅ Fullscreen edit modal for punch items
 - ✅ Track item status through workflow: Open → In Progress → Complete
-- ✅ Real-time dashboard with completion percentage and breakdowns
-- ✅ Filter and organize items by location, priority, status, and assignee
+- ✅ Completion percentage display on project list and detail pages
+- ✅ Real-time dashboard with summary stats and breakdowns
+- ✅ Filter and sort items by location, priority, status, and assignee
+- ✅ Project filtering by name, address, and status
+- ✅ Skeleton loading states for better UX
 
 ## Project Structure
 
@@ -89,10 +96,10 @@ The frontend will run on `http://localhost:3000`
 
 | Method | Path                          | Description                      |
 |--------|-------------------------------|----------------------------------|
-| GET    | /api/projects                 | List all projects                |
+| GET    | /api/projects                 | List all projects with stats     |
 | POST   | /api/projects                 | Create a project                 |
 | GET    | /api/projects/:id             | Get project with items           |
-| GET    | /api/projects/:id/dashboard   | Get completion stats             |
+| PATCH  | /api/projects/:id             | Update project fields            |
 | GET    | /api/items                    | List items (filter by projectId) |
 | POST   | /api/items                    | Create a punch item              |
 | PATCH  | /api/items/:id                | Update item fields               |
@@ -107,9 +114,14 @@ The frontend will run on `http://localhost:3000`
   "name": "string",
   "address": "string",
   "status": "active|completed|archived",
-  "createdAt": "datetime"
+  "createdAt": "datetime",
+  "totalItems": "number (calculated)",
+  "completedItems": "number (calculated)",
+  "completionPercentage": "number (calculated)"
 }
 ```
+
+**Note**: The `totalItems`, `completedItems`, and `completionPercentage` fields are calculated dynamically when fetching the project list.
 
 ### PunchItem
 ```json
@@ -121,10 +133,12 @@ The frontend will run on `http://localhost:3000`
   "status": "open|in_progress|complete",
   "priority": "low|normal|high",
   "assignedTo": "string?",
-  "photo": "string?",
+  "photo": "string? (single URL) or JSON { photos: string[], thumbnailIndex: number }",
   "createdAt": "datetime"
 }
 ```
+
+**Note**: The `photo` field supports both legacy single-photo strings (base64 data URLs) and the new multi-photo gallery format stored as JSON. This maintains backward compatibility with existing data.
 
 ## Development
 
@@ -158,14 +172,16 @@ npm run build
 
 ## Future Enhancements
 
-- Photo upload to cloud storage (S3, Cloudinary)
+- Photo upload to cloud storage (S3, Cloudinary) - currently using base64 encoding
 - User authentication and role-based access
 - Email notifications for status changes
 - PDF report generation
-- Mobile-responsive design improvements
+- Enhanced mobile-responsive design
 - Real-time updates with WebSockets
 - Bulk operations (import/export CSV)
-- Advanced filtering and search
+- Advanced search with full-text indexing
+- Activity logs and audit trails
+- Custom fields and templates per project type
 
 ## License
 
