@@ -3,6 +3,33 @@ import { useParams, Link } from 'react-router-dom';
 import { projectsApi, itemsApi } from '../api/client';
 import PunchItemForm from '../components/PunchItemForm';
 
+function parsePhotoData(photoValue) {
+  if (!photoValue) {
+    return { photos: [], thumbnailIndex: 0 };
+  }
+
+  if (typeof photoValue === 'string') {
+    try {
+      const parsed = JSON.parse(photoValue);
+      if (parsed && Array.isArray(parsed.photos)) {
+        const safeIndex = Math.min(Math.max(parsed.thumbnailIndex || 0, 0), Math.max(parsed.photos.length - 1, 0));
+        return { photos: parsed.photos, thumbnailIndex: safeIndex };
+      }
+    } catch {
+      return { photos: [photoValue], thumbnailIndex: 0 };
+    }
+    return { photos: [photoValue], thumbnailIndex: 0 };
+  }
+
+  return { photos: [], thumbnailIndex: 0 };
+}
+
+function serializePhotoData(photos, thumbnailIndex) {
+  if (!photos.length) return '';
+  const safeIndex = Math.min(Math.max(thumbnailIndex, 0), photos.length - 1);
+  return JSON.stringify({ photos, thumbnailIndex: safeIndex });
+}
+
 export default function ProjectDetail() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
@@ -12,6 +39,24 @@ export default function ProjectDetail() {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [isSubmittingItem, setIsSubmittingItem] = useState(false);
+  const [expandedEditItemId, setExpandedEditItemId] = useState(null);
+  const [expandedEditData, setExpandedEditData] = useState({
+    location: '',
+    description: '',
+    priority: 'normal',
+    status: 'open',
+    assignedTo: '',
+    photos: [],
+    thumbnailIndex: 0
+  });
+  const [isSavingExpandedItem, setIsSavingExpandedItem] = useState(false);
+  const [photoGalleryState, setPhotoGalleryState] = useState({
+    itemId: '',
+    photos: [],
+    currentIndex: 0,
+    thumbnailIndex: 0
+  });
+  const [isUpdatingThumbnail, setIsUpdatingThumbnail] = useState(false);
   
   // Edit project states
   const [isEditingProject, setIsEditingProject] = useState(false);
@@ -97,6 +142,146 @@ export default function ProjectDetail() {
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingItem(null);
+  };
+
+  const handleOpenExpandedEdit = (item) => {
+    const photoData = parsePhotoData(item.photo);
+    setExpandedEditItemId(item.id);
+    setExpandedEditData({
+      location: item.location || '',
+      description: item.description || '',
+      priority: item.priority || 'normal',
+      status: item.status || 'open',
+      assignedTo: item.assignedTo || '',
+      photos: photoData.photos,
+      thumbnailIndex: photoData.thumbnailIndex
+    });
+  };
+
+  const handleCloseExpandedEdit = () => {
+    if (isSavingExpandedItem) return;
+    setExpandedEditItemId(null);
+    setExpandedEditData({
+      location: '',
+      description: '',
+      priority: 'normal',
+      status: 'open',
+      assignedTo: '',
+      photos: [],
+      thumbnailIndex: 0
+    });
+  };
+
+  const handleExpandedEditChange = (e) => {
+    setExpandedEditData({
+      ...expandedEditData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleExpandedPhotoUpload = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (!selectedFiles.length) return;
+
+    const readOne = (file) =>
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+        reader.readAsDataURL(file);
+      });
+
+    Promise.all(selectedFiles.map(readOne)).then((results) => {
+      const valid = results.filter(Boolean);
+      if (!valid.length) return;
+
+      setExpandedEditData((prev) => {
+        const nextPhotos = [...prev.photos, ...valid];
+        return {
+          ...prev,
+          photos: nextPhotos,
+          thumbnailIndex: prev.photos.length ? prev.thumbnailIndex : 0
+        };
+      });
+    });
+
+    e.target.value = '';
+  };
+
+  const handleRemoveExpandedPhoto = (indexToRemove) => {
+    setExpandedEditData((prev) => {
+      const nextPhotos = prev.photos.filter((_, idx) => idx !== indexToRemove);
+      let nextThumbnailIndex = prev.thumbnailIndex;
+
+      if (!nextPhotos.length) {
+        nextThumbnailIndex = 0;
+      } else if (prev.thumbnailIndex === indexToRemove) {
+        nextThumbnailIndex = 0;
+      } else if (prev.thumbnailIndex > indexToRemove) {
+        nextThumbnailIndex = prev.thumbnailIndex - 1;
+      }
+
+      return {
+        ...prev,
+        photos: nextPhotos,
+        thumbnailIndex: nextThumbnailIndex
+      };
+    });
+  };
+
+  const handleOpenGalleryForItem = (item) => {
+    const photoData = parsePhotoData(item.photo);
+    if (!photoData.photos.length) return;
+    setPhotoGalleryState({
+      itemId: item.id,
+      photos: photoData.photos,
+      currentIndex: photoData.thumbnailIndex,
+      thumbnailIndex: photoData.thumbnailIndex
+    });
+  };
+
+  const handleCloseGallery = () => {
+    if (isUpdatingThumbnail) return;
+    setPhotoGalleryState({ itemId: '', photos: [], currentIndex: 0, thumbnailIndex: 0 });
+  };
+
+  const handleMakeThumbnail = async () => {
+    if (!photoGalleryState.itemId || !photoGalleryState.photos.length) return;
+
+    try {
+      setIsUpdatingThumbnail(true);
+      const updatedPhotoValue = serializePhotoData(photoGalleryState.photos, photoGalleryState.currentIndex);
+      await itemsApi.update(photoGalleryState.itemId, { photo: updatedPhotoValue });
+      await loadProject();
+      setPhotoGalleryState((prev) => ({ ...prev, thumbnailIndex: prev.currentIndex }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsUpdatingThumbnail(false);
+    }
+  };
+
+  const handleSaveExpandedEdit = async (e) => {
+    e.preventDefault();
+
+    if (!expandedEditData.location || !expandedEditData.description) {
+      setError('Location and description are required');
+      return;
+    }
+
+    try {
+      setIsSavingExpandedItem(true);
+      await itemsApi.update(expandedEditItemId, {
+        ...expandedEditData,
+        photo: serializePhotoData(expandedEditData.photos, expandedEditData.thumbnailIndex)
+      });
+      await loadProject();
+      setExpandedEditItemId(null);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSavingExpandedItem(false);
+    }
   };
 
   const handleEditProject = () => {
@@ -452,27 +637,331 @@ export default function ProjectDetail() {
           gap: '1rem'
         }}>
           {sortedItems.map(item => (
-            <DashboardItemCard key={item.id} item={item} />
+            <DashboardItemCard
+              key={item.id}
+              item={item}
+              onEdit={() => handleOpenExpandedEdit(item)}
+              onOpenPhoto={() => handleOpenGalleryForItem(item)}
+            />
           ))}
+        </div>
+      )}
+
+      {expandedEditItemId && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.55)',
+          zIndex: 2000,
+          display: 'flex',
+          alignItems: 'stretch',
+          justifyContent: 'stretch'
+        }}>
+          <div style={{
+            width: '100vw',
+            minHeight: '100vh',
+            background: '#fff',
+            overflowY: 'auto',
+            padding: '2rem'
+          }}>
+            <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem'
+              }}>
+                <h2 style={{ margin: 0 }}>Edit Punch Item</h2>
+                <button
+                  type="button"
+                  onClick={handleCloseExpandedEdit}
+                  disabled={isSavingExpandedItem}
+                  style={{
+                    background: '#666',
+                    opacity: isSavingExpandedItem ? 0.6 : 1,
+                    cursor: isSavingExpandedItem ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveExpandedEdit} className="card" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Location *</label>
+                    <input
+                      type="text"
+                      name="location"
+                      value={expandedEditData.location}
+                      onChange={handleExpandedEditChange}
+                      required
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description *</label>
+                    <textarea
+                      name="description"
+                      value={expandedEditData.description}
+                      onChange={handleExpandedEditChange}
+                      required
+                      rows={6}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.5rem' }}>Priority</label>
+                      <select
+                        name="priority"
+                        value={expandedEditData.priority}
+                        onChange={handleExpandedEditChange}
+                        style={{ width: '100%' }}
+                      >
+                        <option value="low">Low</option>
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.5rem' }}>Status</label>
+                      <select
+                        name="status"
+                        value={expandedEditData.status}
+                        onChange={handleExpandedEditChange}
+                        style={{ width: '100%' }}
+                      >
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="complete">Complete</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assigned To</label>
+                    <input
+                      type="text"
+                      name="assignedTo"
+                      value={expandedEditData.assignedTo}
+                      onChange={handleExpandedEditChange}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Upload Photos</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleExpandedPhotoUpload}
+                      disabled={isSavingExpandedItem}
+                      style={{ width: '100%' }}
+                    />
+                    {expandedEditData.photos.length > 0 && (
+                      <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.75rem' }}>
+                        {expandedEditData.photos.map((photoSrc, index) => (
+                          <div key={`${photoSrc.slice(0, 20)}-${index}`} style={{ border: expandedEditData.thumbnailIndex === index ? '2px solid #646cff' : '1px solid #ddd', borderRadius: '8px', padding: '0.4rem' }}>
+                            <img
+                              src={photoSrc}
+                              alt={`Punch item upload ${index + 1}`}
+                              style={{ width: '100%', height: '72px', objectFit: 'cover', borderRadius: '6px' }}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.4rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedEditData({ ...expandedEditData, thumbnailIndex: index })}
+                                disabled={isSavingExpandedItem}
+                                style={{ background: expandedEditData.thumbnailIndex === index ? '#646cff' : '#666', fontSize: '0.75rem', padding: '0.35em 0.5em' }}
+                              >
+                                {expandedEditData.thumbnailIndex === index ? 'Thumbnail' : 'Make Thumbnail'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveExpandedPhoto(index)}
+                                disabled={isSavingExpandedItem}
+                                style={{ background: '#8a8a8a', fontSize: '0.75rem', padding: '0.35em 0.5em' }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={handleCloseExpandedEdit}
+                      disabled={isSavingExpandedItem}
+                      style={{
+                        background: '#666',
+                        opacity: isSavingExpandedItem ? 0.6 : 1,
+                        cursor: isSavingExpandedItem ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingExpandedItem}
+                      style={{
+                        opacity: isSavingExpandedItem ? 0.6 : 1,
+                        cursor: isSavingExpandedItem ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isSavingExpandedItem ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {photoGalleryState.photos.length > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.88)',
+            zIndex: 2100,
+            display: 'flex',
+            alignItems: 'stretch',
+            justifyContent: 'stretch',
+            padding: '1rem'
+          }}
+          onClick={handleCloseGallery}
+        >
+          <div
+            style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ color: '#fff', fontWeight: 600 }}>
+                Photo {photoGalleryState.currentIndex + 1} of {photoGalleryState.photos.length}
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={handleMakeThumbnail}
+                  disabled={isUpdatingThumbnail || photoGalleryState.currentIndex === photoGalleryState.thumbnailIndex}
+                  style={{
+                    background: '#2a8f5b',
+                    opacity: (isUpdatingThumbnail || photoGalleryState.currentIndex === photoGalleryState.thumbnailIndex) ? 0.6 : 1,
+                    cursor: (isUpdatingThumbnail || photoGalleryState.currentIndex === photoGalleryState.thumbnailIndex) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isUpdatingThumbnail ? 'Saving...' : 'Make Thumbnail'}
+                </button>
+                <button type="button" onClick={handleCloseGallery} disabled={isUpdatingThumbnail} style={{ background: '#666' }}>
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setPhotoGalleryState((prev) => ({ ...prev, currentIndex: Math.max(prev.currentIndex - 1, 0) }))}
+                disabled={photoGalleryState.currentIndex === 0}
+                style={{ background: '#555', opacity: photoGalleryState.currentIndex === 0 ? 0.5 : 1 }}
+              >
+                Prev
+              </button>
+              <img
+                src={photoGalleryState.photos[photoGalleryState.currentIndex]}
+                alt="Punch item full size"
+                style={{ maxWidth: '90vw', maxHeight: '78vh', objectFit: 'contain' }}
+              />
+              <button
+                type="button"
+                onClick={() => setPhotoGalleryState((prev) => ({ ...prev, currentIndex: Math.min(prev.currentIndex + 1, prev.photos.length - 1) }))}
+                disabled={photoGalleryState.currentIndex === photoGalleryState.photos.length - 1}
+                style={{ background: '#555', opacity: photoGalleryState.currentIndex === photoGalleryState.photos.length - 1 ? 0.5 : 1 }}
+              >
+                Next
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+              {photoGalleryState.photos.map((photoSrc, index) => (
+                <button
+                  key={`${photoSrc.slice(0, 20)}-${index}`}
+                  type="button"
+                  onClick={() => setPhotoGalleryState((prev) => ({ ...prev, currentIndex: index }))}
+                  style={{
+                    border: index === photoGalleryState.currentIndex ? '2px solid #646cff' : '2px solid transparent',
+                    borderRadius: '6px',
+                    padding: 0,
+                    background: 'transparent',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <img
+                    src={photoSrc}
+                    alt={`Gallery thumbnail ${index + 1}`}
+                    style={{ width: '72px', height: '72px', objectFit: 'cover', borderRadius: '6px' }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function DashboardItemCard({ item }) {
+function DashboardItemCard({ item, onEdit, onOpenPhoto }) {
+  const photoData = parsePhotoData(item.photo);
+  const thumbnailSrc = photoData.photos[photoData.thumbnailIndex] || photoData.photos[0] || '';
+
   return (
     <div className="card" style={{ 
       display: 'flex', 
       flexDirection: 'column',
-      height: '100%'
+      height: '100%',
+      position: 'relative'
     }}>
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label="Edit punch item"
+        style={{
+          position: 'absolute',
+          top: '0.75rem',
+          right: '0.75rem',
+          width: '34px',
+          height: '34px',
+          borderRadius: '999px',
+          padding: 0,
+          fontSize: '1rem',
+          lineHeight: 1,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#666'
+        }}
+      >
+        ✏
+      </button>
+
       {/* Header with Status and Priority */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
         marginBottom: '0.75rem',
+        paddingRight: '2.25rem',
         paddingBottom: '0.75rem',
         borderBottom: '2px solid #f0f0f0'
       }}>
@@ -525,25 +1014,36 @@ function DashboardItemCard({ item }) {
       </div>
 
       {/* Photo */}
-      {item.photo && (
+      {thumbnailSrc && (
         <div style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid #f0f0f0' }}>
-          <a 
-            href={item.photo} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{ 
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              color: '#646cff',
-              textDecoration: 'none',
-              fontSize: '0.9em',
-              fontWeight: '500'
+          <button
+            type="button"
+            onClick={onOpenPhoto}
+            style={{
+              border: 'none',
+              padding: 0,
+              background: 'transparent',
+              cursor: 'pointer'
             }}
+            aria-label="Open photo"
           >
-            <span style={{ fontSize: '1.2em' }}>📷</span>
-            View Photo
-          </a>
+            <img
+              src={thumbnailSrc}
+              alt="Punch item thumbnail"
+              style={{
+                width: '96px',
+                height: '96px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+                border: '1px solid #ddd'
+              }}
+            />
+          </button>
+          {photoData.photos.length > 1 && (
+            <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: '#666' }}>
+              {photoData.photos.length} photos
+            </div>
+          )}
         </div>
       )}
     </div>
