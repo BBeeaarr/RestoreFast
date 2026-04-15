@@ -363,6 +363,8 @@ export default function ProjectDetail() {
   // Calculate stats
   const totalItems = items.length;
   const filteredCount = filteredItems.length;
+  const completedItems = items.filter(i => i.status === 'complete').length;
+  const completionPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
   if (loading) return <ProjectDetailSkeleton />;
   if (error) return <div className="container">Error: {error}</div>;
@@ -470,7 +472,13 @@ export default function ProjectDetail() {
 
       {/* Summary Stats */}
       <div className="card" style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ fontSize: '3rem', fontWeight: 'bold', color: completionPercentage === 100 ? '#155724' : '#646cff' }}>
+              {completionPercentage}%
+            </div>
+            <div style={{ color: '#666', fontSize: '0.9em', fontWeight: '600' }}>Completion</div>
+          </div>
           <div>
             <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#646cff' }}>
               {totalItems}

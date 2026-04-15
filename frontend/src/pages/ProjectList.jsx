@@ -234,31 +234,58 @@ export default function ProjectList() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
           gap: '1rem'
         }}>
-          {filteredProjects.map(project => (
-            <div key={project.id} className="card">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <h3 style={{ marginBottom: '0.5rem' }}>
-                    <Link 
-                      to={`/projects/${project.id}`}
-                      style={{ color: '#1a1a1a', textDecoration: 'none' }}
-                    >
-                      {project.name}
-                    </Link>
-                  </h3>
-                  <p style={{ color: '#666', marginBottom: '0.5rem', fontSize: '0.95em' }}>
-                    📍 {project.address}
-                  </p>
-                  <span className={`badge badge-${project.status}`}>
-                    {project.status}
-                  </span>
+          {filteredProjects.map(project => {
+            const completionPercentage = project.completionPercentage || 0;
+            const totalItems = project.totalItems || 0;
+            const completedItems = project.completedItems || 0;
+            
+            return (
+              <div key={project.id} className="card">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <h3 style={{ marginBottom: '0.5rem' }}>
+                      <Link 
+                        to={`/projects/${project.id}`}
+                        style={{ color: '#1a1a1a', textDecoration: 'none' }}
+                      >
+                        {project.name}
+                      </Link>
+                    </h3>
+                    <p style={{ color: '#666', marginBottom: '0.5rem', fontSize: '0.95em' }}>
+                      📍 {project.address}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                      <span className={`badge badge-${project.status}`}>
+                        {project.status}
+                      </span>
+                      {totalItems > 0 && (
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '0.5rem',
+                          fontSize: '0.9em'
+                        }}>
+                          <span style={{ 
+                            fontWeight: 'bold', 
+                            fontSize: '1.2em',
+                            color: completionPercentage === 100 ? '#155724' : '#646cff'
+                          }}>
+                            {completionPercentage}%
+                          </span>
+                          <span style={{ color: '#666' }}>
+                            ({completedItems}/{totalItems} complete)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Link to={`/projects/${project.id}`} style={{ marginTop: 'auto' }}>
+                    <button style={{ width: '100%' }}>View Project</button>
+                  </Link>
                 </div>
-                <Link to={`/projects/${project.id}`} style={{ marginTop: 'auto' }}>
-                  <button style={{ width: '100%' }}>View Project</button>
-                </Link>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

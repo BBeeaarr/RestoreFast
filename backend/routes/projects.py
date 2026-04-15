@@ -6,9 +6,25 @@ projects_bp = Blueprint('projects', __name__)
 
 @projects_bp.route('/projects', methods=['GET'])
 def get_projects():
-    """List all projects"""
+    """List all projects with completion stats"""
     projects = Project.query.all()
-    return jsonify([project.to_dict() for project in projects]), 200
+    result = []
+    
+    for project in projects:
+        project_data = project.to_dict()
+        
+        # Calculate completion stats
+        total_items = len(project.items)
+        completed_items = sum(1 for item in project.items if item.status == 'complete')
+        completion_percentage = round((completed_items / total_items * 100)) if total_items > 0 else 0
+        
+        project_data['totalItems'] = total_items
+        project_data['completedItems'] = completed_items
+        project_data['completionPercentage'] = completion_percentage
+        
+        result.append(project_data)
+    
+    return jsonify(result), 200
 
 @projects_bp.route('/projects', methods=['POST'])
 def create_project():
